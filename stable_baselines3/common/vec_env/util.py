@@ -2,6 +2,7 @@
 Helpers for dealing with vectorized environments.
 """
 from collections import OrderedDict
+from doctest import UnexpectedException
 from typing import Any, Dict, List, Tuple
 
 import gym
@@ -74,3 +75,70 @@ def obs_space_info(obs_space: gym.spaces.Space) -> Tuple[List[str], Dict[Any, Tu
         shapes[key] = box.shape
         dtypes[key] = box.dtype
     return keys, shapes, dtypes
+
+
+class SpaceInfo():
+    def __init__(self, indexes, is_img, shape, dtype):
+        self.indexes = indexes
+        self.is_img = is_img
+        self.shape = shape
+        self.dtype = dtype
+
+    def __repr__(self):
+        return f"[{self.indexes}, {self.is_img}, {self.shape}, {self.dtype}]"
+
+def _is_img(box_space):
+    obs_shape = box_space.shape
+    if len(obs_shape)==1:
+        return False
+    elif len(obs_shape)==2 or len(obs_shape)==3:
+        return True
+    else:
+        raise UnexpectedException(f"Unexpected obs_shape {obs_shape}")
+
+def _img_shape_chw(box_space):
+    obs_shape = box_space.shape
+    if len(obs_shape)==2:
+        # 1-channel image
+        return (1, obs_shape[0], obs_shape[1])
+    elif len(obs_shape)==3:
+        # multi-channel image
+        return (obs_shape[0], obs_shape[1], obs_shape[2])
+    else:
+        raise UnexpectedException(f"Unexpected image obs_shape {obs_shape}")
+
+def _get_space_info(obs_space):
+    if isinstance(obs_space, gym.spaces.Box):
+        is_img = _is_img(obs_space)
+        if is_img:
+            shape = _img_shape_chw(obs_space)
+        else:
+            shape = (obs_space.shape[0],)
+        dtype = obs_space.dtype
+        ret = [SpaceInfo([], is_img, shape, dtype)]
+    elif isinstance(obs_space, gym.spaces.Dict):
+        ret = []
+        for sub_obs_key, sub_obs_space in obs_space.spaces.items():
+            sub_info = _get_space_info(sub_obs_space)
+            for si in sub_info:
+                ret.append(SpaceInfo([sub_obs_key]+si.indexes, si.is_img, si.shape, si.dtype))
+    else:
+        raise UnexpectedException(f"Unexpected obs_space {obs_space}")
+
+    return ret
+
+def get_space_info(obs_space):
+    ret = _get_space_info(obs_space)
+    keys = [":".join(si.indexes) for si in ret]
+    shapes = {":".join(si.indexes) : si.shape for si in ret}
+    dtypes = {":".join(si.indexes) : si.dtype for si in ret}
+    for i in range(len(keys)):
+        if keys[i] == ():
+            keys[i] = None
+    return keys, shapes, dtypes
+
+
+def get_sub_obs(obs, indexes):
+    for i in indexes.split(":"):
+        obs = obs[i]
+    return obs
