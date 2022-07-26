@@ -502,6 +502,7 @@ class DictReplayBuffer(ReplayBuffer):
         optimize_memory_usage: bool = False,
         handle_timeout_termination: bool = True,
     ):
+        # print(f"DictReplayBuffer: {observation_space}")
         super(ReplayBuffer, self).__init__(buffer_size, observation_space, action_space, device, n_envs=n_envs)
 
         assert isinstance(self.obs_shape, dict), "DictReplayBuffer must be used with Dict obs space only"
