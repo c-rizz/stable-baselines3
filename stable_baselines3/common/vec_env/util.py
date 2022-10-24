@@ -85,7 +85,7 @@ class SpaceInfo():
         self.dtype = dtype
 
     def __repr__(self):
-        return f"[{self.indexes}, {self.is_img}, {self.shape}, {self.dtype}]"
+        return f"SpaceInfo({self.indexes}, {self.is_img}, {self.shape}, {self.dtype})"
 
 def _is_img(box_space):
     obs_shape = box_space.shape
@@ -127,18 +127,26 @@ def _get_space_info(obs_space):
 
     return ret
 
+def _idx_to_key(indexes):
+    if len(indexes)==0:
+        return None
+    else:
+        return tuple(indexes)
+
 def get_space_info(obs_space):
     ret = _get_space_info(obs_space)
-    keys = [":".join(si.indexes) for si in ret]
-    shapes = {":".join(si.indexes) : si.shape for si in ret}
-    dtypes = {":".join(si.indexes) : si.dtype for si in ret}
-    for i in range(len(keys)):
-        if keys[i] == ():
-            keys[i] = None
+    # print(f"Got space info: {ret}")
+    keys = [_idx_to_key(si.indexes) for si in ret]
+    shapes = {_idx_to_key(si.indexes) : si.shape for si in ret}
+    dtypes = {_idx_to_key(si.indexes) : si.dtype for si in ret}
+    # for i in range(len(keys)):
+    #     if len(keys[i]) == 0:
+    #         keys[i] = None
+    print(f"keys = {keys}, shapes = {shapes}, dtypes= {dtypes}")
     return keys, shapes, dtypes
 
 
-def get_sub_obs(obs, indexes):
-    for i in indexes.split(":"):
+def get_sub_obs(obs, key):
+    for i in key:
         obs = obs[i]
     return obs
